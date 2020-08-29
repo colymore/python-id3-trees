@@ -4,7 +4,6 @@ import sys
 import math
 import os
 
-
 def load_csv_to_header_data(filename):
     fpath = os.path.join(os.getcwd(), filename)
     fs = csv.reader(open(fpath, newline='\n'))
@@ -90,7 +89,7 @@ def entropy(n, labels):
     for label in labels.keys():
         p_x = labels[label] / n
         ent += - p_x * math.log(p_x, 2)
-    return ent
+    return round(ent,2)
 
 
 def partition_data(data, group_att):
@@ -116,15 +115,20 @@ def avg_entropy_w_partitions(data, splitting_att, target_attribute):
     partitions = partition_data(data, splitting_att)
 
     avg_ent = 0
-
+    imsg = "Informacion("+splitting_att+')='
     for partition_key in partitions.keys():
         partitioned_data = partitions[partition_key]
         partition_n = len(partitioned_data['rows'])
         partition_labels = get_class_labels(partitioned_data, target_attribute)
         partition_entropy = entropy(partition_n, partition_labels)
+        print('Entropia('+str(partition_key) + ')= -(', end='')
+        for k,v in partition_labels.items():
+            print('(('+str(v)+'/'+str(partition_n)+' * log2('+str(v)+'/'+str(partition_n)+'))+', end='')
+        print('=' + str(round(partition_entropy,2)))
         avg_ent += partition_n / n * partition_entropy
-
-    return avg_ent, partitions
+        imsg += str(round(partition_n / n,2)) + '*' + str(partition_entropy) + "+"
+    print(imsg+'='+str(round(avg_ent, 2)))
+    return round(avg_ent,2), partitions
 
 
 def most_common_label(labels):
@@ -153,8 +157,10 @@ def id3(data, uniqs, remaining_atts, target_attribute):
     max_info_gain_partitions = None
 
     for remaining_att in remaining_atts:
+        print(remaining_att)
         avg_ent, partitions = avg_entropy_w_partitions(data, remaining_att, target_attribute)
         info_gain = ent - avg_ent
+        print('Ganancia informacion(' + str(remaining_att) + ') es = Entropia-Informacion' + str(round(ent, 2)) + '-' + str(round(avg_ent, 2)) + '=' + str(round(info_gain,2)))
         if max_info_gain is None or info_gain > max_info_gain:
             max_info_gain = info_gain
             max_info_gain_att = remaining_att
@@ -163,6 +169,10 @@ def id3(data, uniqs, remaining_atts, target_attribute):
     if max_info_gain is None:
         node['label'] = most_common_label(labels)
         return node
+    else:
+        print ('Elegimos ' + str(max_info_gain_att))
+        print('')
+        print('')
 
     node['attribute'] = max_info_gain_att
     node['nodes'] = {}
@@ -214,7 +224,7 @@ def main():
     argv = sys.argv
     print("Command line args are {}: ".format(argv))
 
-    config = load_config(argv[1])
+    config = load_config("./resources/tennis.cfg")
 
     data = load_csv_to_header_data(config['data_file'])
     data = project_columns(data, config['data_project_columns'])
